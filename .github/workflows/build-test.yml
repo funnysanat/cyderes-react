@@ -1,1 +1,42 @@
+name: Build, test and deploy
 
+on:
+  push:
+    branches:
+      - main
+      - release/*
+  tags:
+    - "v*.*.*"
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Get current commit hash and version tag
+        run: |
+          COMMIT_HASH=$(git rev-parse --short HEAD)
+          VERSION_TAG=$(git describe --tags --abbrev=0)
+          echo "{\"commit\": \"$COMMIT_HASH\", \"version\": \"$VERSION_TAG\"}" > version.json
+
+      - name: Upload version.json
+        uses: actions/upload-artifact@v2
+        with:
+          name: version
+          path: version.json
+
+      - name: Set up Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v1
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run the tests
+        run: npm test
+
+      - name: Build
+        run: npm run build && cp version.json build/
